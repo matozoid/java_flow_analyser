@@ -2,13 +2,15 @@ package com.laamella.javacfa;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
-import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.symbolsolver.JavaSymbolSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.laamella.snippets_test_junit5.BasePath;
 import com.laamella.snippets_test_junit5.SnippetFileFormat;
 import com.laamella.snippets_test_junit5.SnippetTestFactory;
-import io.vavr.collection.List;
 import io.vavr.control.Option;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -36,18 +38,24 @@ class ControlFlowAnalyserTest {
     }
 
     @TestFactory
-    Stream<DynamicTest> constructorTests() throws IOException {
+    Stream<DynamicTest> compilationUnitTests() throws IOException {
+        JavaParser jp = new JavaParser(
+                new ParserConfiguration()
+                        .setSymbolResolver(new JavaSymbolSolver(new CombinedTypeSolver(new ReflectionTypeSolver()))));
         return new SnippetTestFactory<>(
                 new SnippetFileFormat("/*", "*/\n", "\n/* expected:\n", "\n---\n", "*/"),
-                basePath.inSubDirectory("multiple_results"),
+                basePath.inSubDirectory("compilation_unit"),
                 allFiles(),
-                StaticJavaParser::parse,
+                jp::parse,
                 (testCaseText, testCase) -> dumpMultipleDebugFlow(testCase)
         ).stream();
     }
 
-    private String dumpMultipleDebugFlow(CompilationUnit input) {
-        CompilationUnitFlows flows = new ControlFlowAnalyser().analyse(input);
+    private String dumpMultipleDebugFlow(ParseResult<CompilationUnit> result) {
+        if (!result.isSuccessful()) {
+            return result.toString();
+        }
+        CompilationUnitFlows flows = new ControlFlowAnalyser().analyse(result.getResult().get());
         DebugOutput debugOutput = new DebugOutput();
         return
                 flows.getConstructorFlows().filter(Objects::nonNull).map(debugOutput::print).mkString("======\n") +

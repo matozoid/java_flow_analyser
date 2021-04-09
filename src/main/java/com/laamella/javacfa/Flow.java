@@ -55,7 +55,11 @@ public interface Flow {
         /**
          * Like STEP, but it is cause by the return statement.
          */
-        RETURN
+        RETURN,
+        /**
+         * At this point the code throws an exception, which is caught at next.
+         */
+        THROW
     }
 
     class SimpleFlow implements Flow {

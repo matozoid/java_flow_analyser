@@ -8,6 +8,9 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.SimpleName;
 import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.type.Type;
+import com.github.javaparser.resolution.types.ResolvedType;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
@@ -38,7 +41,7 @@ public class ControlFlowAnalyser {
      */
     public Flow analyse(Node node) {
         SimpleFlow startNode = new SimpleFlow(node, START, null);
-        Flow flow = analyse(node, null, HashMap.empty(), null, null, HashMap.empty(), null, HashMap.empty());
+        Flow flow = analyse(node, null, HashMap.empty(), null, null, HashMap.empty(), null, List.empty());
         if (flow == null) {
             return null;
         }
@@ -76,7 +79,7 @@ public class ControlFlowAnalyser {
             Flow next, Flow breakTo,
             Map<String, Flow> breakLabels,
             Flow returnFlow,
-            Map<Type, Flow> catchClausesByCatchType) {
+            List<Tuple2<Type, Flow>> catchClausesByCatchType) {
         if (node instanceof MethodDeclaration) {
             return ((MethodDeclaration) node).getBody()
                     .map(body -> analyse(body, back, continueLabels, next, next, breakLabels, returnFlow, catchClausesByCatchType))
@@ -145,16 +148,26 @@ public class ControlFlowAnalyser {
             return labeledFlow;
         } else if (node instanceof TryStmt) {
             TryStmt tryStmt = (TryStmt) node;
-            NodeList<CatchClause> catchClauses = tryStmt.getCatchClauses();
             Flow finallyFlow = tryStmt.getFinallyBlock()
                     .map(fb -> analyse(fb, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
                     .orElse(next);
-            Map<Type, Flow> newCatchClausesByCatchType = catchClausesByCatchType
-                    .merge(catchClauses.stream()
-                            .collect(HashMap.collector(
-                                    cc -> cc.getParameter().getType(),
-                                    cc -> analyse(cc.getBody(), back, continueLabels, finallyFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType))));
+            List<Tuple2<Type, Flow>> newCatchClausesByCatchType = tryStmt.getCatchClauses().stream()
+                    .map(cc -> Tuple.of(cc.getParameter().getType(),
+                            analyse(cc.getBody(), back, continueLabels, finallyFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType)))
+                    .collect(List.collector())
+                    .appendAll(catchClausesByCatchType);
             return analyse(tryStmt.getTryBlock(), back, continueLabels, finallyFlow, breakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
+        } else if (node instanceof ThrowStmt) {
+            try {
+                ResolvedType thrownType = ((ThrowStmt) node).getExpression().calculateResolvedType();
+                Flow correspondingCatch = catchClausesByCatchType
+                        .find(tuple -> thrownType.isAssignableBy(tuple._1.resolve())).map(tuple -> tuple._2)
+                        .getOrElse((Flow) null);
+                return new SimpleFlow(node, THROW, correspondingCatch);
+            } catch (IllegalStateException e) {
+                System.err.println("Cannot define a throws-flow without the symbol solver.");
+                return new SimpleFlow(node, THROW, null);
+            }
         } else if (node instanceof ReturnStmt) {
             return new SimpleFlow(node, RETURN, returnFlow);
         } else if (node instanceof Statement) {
