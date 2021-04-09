@@ -3,7 +3,6 @@ package com.laamella.javacfa;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
-import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.SimpleName;
@@ -18,14 +17,16 @@ import static com.laamella.javacfa.Flow.Type.*;
 
 public class ControlFlowAnalyser {
     /**
-     * TODO
-     *
-     * @return a list of all possible flows in this compilation unit
+     * @return a list of all possible flows in this compilation unit.
      */
-    public List<Flow> analyse(CompilationUnit compilationUnit) {
-        return compilationUnit.findAll(CallableDeclaration.class).stream()
+    public CompilationUnitFlows analyse(CompilationUnit compilationUnit) {
+        return new CompilationUnitFlows(
+                compilationUnit.findAll(ConstructorDeclaration.class).stream()
                 .map(this::analyse)
-                .collect(List.collector());
+                .collect(List.collector()),
+                compilationUnit.findAll(MethodDeclaration.class).stream()
+                .map(this::analyse)
+                .collect(List.collector()));
     }
 
     /**
@@ -154,6 +155,13 @@ public class ControlFlowAnalyser {
             Flow directFlow = analyse(labeledStmt.getStatement(), back, continueLabels.put(label, labeledFlow), next, breakTo, breakLabels.put(label, next), returnFlow);
             labeledFlow.directTo(directFlow);
             return labeledFlow;
+        } else if (node instanceof TryStmt) {
+            TryStmt tryStmt = (TryStmt) node;
+            NodeList<CatchClause> catchClauses = tryStmt.getCatchClauses();
+            Flow nextFlow= tryStmt.getFinallyBlock()
+                    .map(fb -> analyse(fb, back, continueLabels, next, breakTo, breakLabels, returnFlow))
+                    .orElse(next);
+            return analyse(tryStmt.getTryBlock(), back, continueLabels, nextFlow, breakTo, breakLabels, returnFlow);
         } else if (node instanceof ReturnStmt) {
             return new SimpleFlow(node, RETURN, returnFlow);
         } else if (node instanceof Statement) {

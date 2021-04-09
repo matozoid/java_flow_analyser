@@ -47,9 +47,11 @@ class ControlFlowAnalyserTest {
     }
 
     private String dumpMultipleDebugFlow(CompilationUnit input) {
-        List<Flow> flows = new ControlFlowAnalyser().analyse(input);
+        CompilationUnitFlows flows = new ControlFlowAnalyser().analyse(input);
         DebugOutput debugOutput = new DebugOutput();
-        return flows.filter(Objects::nonNull).map(debugOutput::print).mkString("======\n");
+        return
+                flows.getConstructorFlows().filter(Objects::nonNull).map(debugOutput::print).mkString("======\n") +
+                        flows.getMethodFlows().filter(Objects::nonNull).map(debugOutput::print).mkString("======\n");
     }
 
     private Node parse(String testCase) {
