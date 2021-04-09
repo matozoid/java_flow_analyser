@@ -1,6 +1,7 @@
 package com.laamella.javacfa;
 
 import com.github.javaparser.ast.Node;
+import io.vavr.collection.List;
 
 import static java.util.Objects.requireNonNull;
 
@@ -25,11 +26,13 @@ public interface Flow {
      */
     Type getType();
 
-    void setNext(Flow next);
+    Flow setNext(Flow next);
 
-    void setMayBranchTo(Flow mayBranchTo);
+    Flow setMayBranchTo(Flow mayBranchTo);
 
-    void setType(Type type);
+    Flow setType(Type type);
+
+    List<String> getErrors();
 
     enum Type {
         /**
@@ -67,6 +70,7 @@ public interface Flow {
         private Type type;
         private Flow next;
         private Flow mayBranchTo = null;
+        private List<String> errors = List.empty();
 
         public SimpleFlow(Node node, Type type, Flow next) {
             this.node = node;
@@ -95,18 +99,34 @@ public interface Flow {
         }
 
         @Override
-        public void setNext(Flow next) {
+        public Flow setNext(Flow next) {
             this.next = next;
+            return this;
+
         }
 
         @Override
-        public void setMayBranchTo(Flow mayBranchTo) {
+        public Flow setMayBranchTo(Flow mayBranchTo) {
             this.mayBranchTo = mayBranchTo;
+            return this;
+
         }
 
         @Override
-        public void setType(Type type) {
+        public Flow setType(Type type) {
             this.type = type;
+            return this;
+
+        }
+
+        @Override
+        public List<String> getErrors() {
+            return errors;
+        }
+
+        public Flow addError(String message) {
+            this.errors = errors.append(message);
+            return this;
         }
     }
 
@@ -134,18 +154,26 @@ public interface Flow {
         }
 
         @Override
-        public void setNext(Flow next) {
+        public Flow setNext(Flow next) {
             indirection.setNext(next);
+            return indirection;
         }
 
         @Override
-        public void setMayBranchTo(Flow mayBranchTo) {
+        public Flow setMayBranchTo(Flow mayBranchTo) {
             indirection.setMayBranchTo(mayBranchTo);
+            return indirection;
         }
 
         @Override
-        public void setType(Type type) {
+        public Flow setType(Type type) {
             indirection.setType(type);
+            return indirection;
+        }
+
+        @Override
+        public List<String> getErrors() {
+            return indirection.getErrors();
         }
 
         public void directTo(Flow flow) {

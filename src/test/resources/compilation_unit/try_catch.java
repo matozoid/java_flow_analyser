@@ -26,13 +26,13 @@ class X {
     }
 }
 /* expected:
-4    START  -> 6
-6    CHOICE -> 9 or 7
-9    CHOICE -> 19 or 10
-7    THROW  -> 15
-19   STEP   -> 21
-10   THROW  -> 13
-15   STEP   -> 19
-21   THROW  -> end
-13   STEP   -> 19
+4    START  -> 7
+7    CHOICE -> 10 or 8
+10   CHOICE -> 20 or 11
+8    THROW  -> 16
+20   STEP   -> 25
+11   THROW  -> 14
+16   STEP   -> 20
+25   THROW  -> end
+14   STEP   -> 20
 */

@@ -165,8 +165,8 @@ public class ControlFlowAnalyser {
                         .getOrElse((Flow) null);
                 return new SimpleFlow(node, THROW, correspondingCatch);
             } catch (IllegalStateException e) {
-                System.err.println("Cannot define a throws-flow without the symbol solver.");
-                return new SimpleFlow(node, THROW, null);
+                return new SimpleFlow(node, THROW, null)
+                        .addError("Cannot define a throws-flow without the symbol solver.");
             }
         } else if (node instanceof ReturnStmt) {
             return new SimpleFlow(node, RETURN, returnFlow);
