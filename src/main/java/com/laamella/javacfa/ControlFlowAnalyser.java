@@ -19,6 +19,7 @@ import static com.laamella.javacfa.Flow.Type.*;
 public class ControlFlowAnalyser {
     /**
      * TODO
+     *
      * @return a list of all possible flows in this compilation unit
      */
     public List<Flow> analyse(CompilationUnit compilationUnit) {
@@ -92,8 +93,7 @@ public class ControlFlowAnalyser {
                     .map(body -> analyse(body, back, continueLabels, next, next, breakLabels, returnFlow))
                     .orElse(null);
         } else if (node instanceof ConstructorDeclaration) {
-            // TODO has to go through fields, initializer blocks, etc.
-            return null;
+            return analyse(((ConstructorDeclaration) node).getBody(), back, continueLabels, next, next, breakLabels, returnFlow);
         } else if (node instanceof BlockStmt) {
             BlockStmt blockStmt = (BlockStmt) node;
             NodeList<Statement> statements = blockStmt.getStatements();

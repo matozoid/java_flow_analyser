@@ -7,4 +7,6 @@ class X {
     }
 }
 /* expected:
+5    START  -> 6
+6    STEP   -> end
 */
