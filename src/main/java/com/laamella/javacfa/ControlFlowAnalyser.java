@@ -43,7 +43,6 @@ public class ControlFlowAnalyser {
             return null;
         }
         startNode.setNext(flow);
-        removeEmpties(startNode);
         removeIndirections(startNode);
         return startNode;
     }
@@ -70,25 +69,6 @@ public class ControlFlowAnalyser {
         });
     }
 
-    /**
-     * To make the logic in the analyse method a little simpler, nodes
-     * that return no flow at all are treated as if they did have one step.
-     * <p>
-     * The type is set to EMPTY, and we remove them again here, before
-     * returning the graph to the user.
-     */
-    private void removeEmpties(Flow startNode) {
-        new Visitor(startNode).visit(flow -> {
-            while (flow.getNext() != null && flow.getNext().getType() == EMPTY) {
-                flow.setNext(flow.getNext().getNext());
-            }
-            while (flow.getMayBranchTo() != null && flow.getMayBranchTo().getType() == EMPTY) {
-                flow.setMayBranchTo(flow.getMayBranchTo().getNext());
-            }
-        });
-    }
-
-
     private Flow analyse(
             Node node,
             Flow back,
@@ -108,21 +88,21 @@ public class ControlFlowAnalyser {
             NodeList<Statement> statements = blockStmt.getStatements();
             if (statements.size() == 0) {
                 // Skip this block completely.
-                return new SimpleFlow(node, EMPTY, next);
+                return null;
             }
             Flow firstNode = null;
 
-            ForwardDeclaredFlow[] statementFlows = new ForwardDeclaredFlow[statements.size()];
-            for (int i = 0, statementFlowsLength = statementFlows.length; i < statementFlowsLength; i++) {
-                statementFlows[i] = new ForwardDeclaredFlow();
-            }
-
+            ForwardDeclaredFlow lastNext = null;
             for (int i = 0; i < statements.size(); i++) {
                 Statement stmt = statements.get(i);
-                Flow stmtNext = i < statements.size() - 1 ? statementFlows[i + 1] : next;
+                ForwardDeclaredFlow forwardDeclaredStmtNext = new ForwardDeclaredFlow();
+                Flow stmtNext = i < statements.size() - 1 ? forwardDeclaredStmtNext : next;
                 Flow stmtFlow = analyse(stmt, back, continueLabels, stmtNext, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
                 if (stmtFlow != null) {
-                    statementFlows[i].directTo(stmtFlow);
+                    if (lastNext != null) {
+                        lastNext.directTo(stmtFlow);
+                    }
+                    lastNext = forwardDeclaredStmtNext;
                     if (i == 0) {
                         firstNode = stmtFlow;
                     }

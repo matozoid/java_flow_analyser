@@ -53,10 +53,6 @@ public interface Flow {
          */
         START,
         /**
-         * Not a flow node. These only occur during analysis, the user won't see them.
-         */
-        EMPTY,
-        /**
          * Like STEP, but it is cause by the return statement.
          */
         RETURN
