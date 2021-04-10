@@ -152,6 +152,9 @@ public class ControlFlowAnalyser {
             Flow finallyFlow = tryStmt.getFinallyBlock()
                     .map(fb -> analyse(fb, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
                     .orElse(next);
+            Flow finallyFlowForContinue = tryStmt.getFinallyBlock()
+                    .map(fb -> analyse(fb, back, continueLabels, back, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                    .orElse(next);
             Flow finallyFlowForBreakTo = tryStmt.getFinallyBlock()
                     .map(fb -> analyse(fb, back, continueLabels, breakTo, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
                     .orElse(next);
@@ -160,7 +163,7 @@ public class ControlFlowAnalyser {
                             analyse(cc.getBody(), back, continueLabels, finallyFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType)))
                     .collect(List.collector())
                     .appendAll(catchClausesByCatchType);
-            return analyse(tryStmt.getTryBlock(), back, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
+            return analyse(tryStmt.getTryBlock(), finallyFlowForContinue, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
         } else if (node instanceof ThrowStmt) {
             try {
                 ResolvedType thrownType = ((ThrowStmt) node).getExpression().calculateResolvedType();

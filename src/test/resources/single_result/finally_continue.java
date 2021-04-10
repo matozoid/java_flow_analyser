@@ -1,8 +1,8 @@
 int x() {
         while (true) {
             try {
-                // when breaking from a try-finally, the finally has to be executed.
-                break;
+                // when using continue from a try-finally, the finally has to be executed every time.
+                continue;
             } finally {
                 System.out.println("xxx");
             }
@@ -12,6 +12,6 @@ int x() {
 /* expected:
 1    START  -> 2
 2    CHOICE -> end or 5
-5    BREAK  -> 7
-7    STEP   -> end
+5    CONTIN -> 7
+7    STEP   -> 2
 */
