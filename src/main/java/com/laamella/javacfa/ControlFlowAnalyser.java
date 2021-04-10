@@ -76,7 +76,8 @@ public class ControlFlowAnalyser {
             Node node,
             Flow back,
             Map<String, Flow> continueLabels,
-            Flow next, Flow breakTo,
+            Flow next,
+            Flow breakTo,
             Map<String, Flow> breakLabels,
             Flow returnFlow,
             List<Tuple2<Type, Flow>> catchClausesByCatchType) {
@@ -151,12 +152,15 @@ public class ControlFlowAnalyser {
             Flow finallyFlow = tryStmt.getFinallyBlock()
                     .map(fb -> analyse(fb, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
                     .orElse(next);
+            Flow finallyFlowForBreakTo = tryStmt.getFinallyBlock()
+                    .map(fb -> analyse(fb, back, continueLabels, breakTo, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                    .orElse(next);
             List<Tuple2<Type, Flow>> newCatchClausesByCatchType = tryStmt.getCatchClauses().stream()
                     .map(cc -> Tuple.of(cc.getParameter().getType(),
                             analyse(cc.getBody(), back, continueLabels, finallyFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType)))
                     .collect(List.collector())
                     .appendAll(catchClausesByCatchType);
-            return analyse(tryStmt.getTryBlock(), back, continueLabels, finallyFlow, breakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
+            return analyse(tryStmt.getTryBlock(), back, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
         } else if (node instanceof ThrowStmt) {
             try {
                 ResolvedType thrownType = ((ThrowStmt) node).getExpression().calculateResolvedType();
