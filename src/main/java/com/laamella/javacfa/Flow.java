@@ -1,6 +1,8 @@
 package com.laamella.javacfa;
 
 import com.github.javaparser.ast.Node;
+import io.vavr.Tuple;
+import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 
 import static java.util.Objects.requireNonNull;
@@ -32,7 +34,19 @@ public interface Flow {
 
     Flow setType(Type type);
 
+    /**
+     * @return the errors for this flow node.
+     */
     List<String> getErrors();
+
+    /**
+     * @return the errors for all flow nodes.
+     */
+    default HashMap<Flow, List<String>> getAllErrors() {
+        return new Visitor(this)
+                .map(flow -> Tuple.of(flow, flow.getErrors()))
+                .foldLeft(HashMap.empty(), HashMap::put);
+    }
 
     enum Type {
         /**

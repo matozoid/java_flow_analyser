@@ -25,6 +25,9 @@ public class DebugOutput {
         if (flow.getMayBranchTo() != null) {
             output.append(" or " + extractLineNumber(flow.getMayBranchTo()));
         }
+        if(!flow.getErrors().isEmpty()) {
+            output.append(flow.getErrors().mkString(" *** ", ", ", " ***"));
+        }
 
         output.append("\n");
     }
