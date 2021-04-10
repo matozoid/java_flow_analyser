@@ -35,4 +35,5 @@ class X {
 16   STEP   -> 20
 25   THROW  -> end
 14   STEP   -> 20
+20   STEP   -> 25
 */

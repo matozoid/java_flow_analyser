@@ -15,6 +15,8 @@ import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
 
+import java.util.Arrays;
+
 import static com.laamella.javacfa.Flow.ForwardDeclaredFlow;
 import static com.laamella.javacfa.Flow.SimpleFlow;
 import static com.laamella.javacfa.Flow.Type.*;
@@ -135,6 +137,11 @@ public class ControlFlowAnalyser {
                 ifFlow.setNext(next);
             }
             return ifFlow;
+        } else if (node instanceof ForEachStmt) {
+            ForEachStmt forEachStmt = (ForEachStmt) node;
+            SimpleFlow forEachFlow = new SimpleFlow(node, CHOICE, next);
+            forEachFlow.setMayBranchTo(analyse(forEachStmt.getBody(), forEachFlow, continueLabels, forEachFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
+            return forEachFlow;
         } else if (node instanceof WhileStmt) {
             WhileStmt whileStmt = (WhileStmt) node;
             SimpleFlow whileFlow = new SimpleFlow(node, CHOICE, next);
@@ -155,6 +162,7 @@ public class ControlFlowAnalyser {
             return labeledFlow;
         } else if (node instanceof TryStmt) {
             TryStmt tryStmt = (TryStmt) node;
+            // We have to redirect all the flows escaping this block through the finally block.
             Flow finallyFlow = tryStmt.getFinallyBlock()
                     .map(fb -> analyse(fb, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
                     .orElse(next);
@@ -164,9 +172,11 @@ public class ControlFlowAnalyser {
             Flow finallyFlowForBreakTo = tryStmt.getFinallyBlock()
                     .map(fb -> analyse(fb, back, continueLabels, breakTo, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
                     .orElse(next);
+            // TODO redirect labeled breaks through the finally block
+            // TODO redirect labeled continues through the finally block
             List<Tuple2<Type, Flow>> newCatchClausesByCatchType = tryStmt.getCatchClauses().stream()
                     .map(cc -> Tuple.of(cc.getParameter().getType(),
-                            analyse(cc.getBody(), back, continueLabels, finallyFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType)))
+                            analyse(cc.getBody(), back, continueLabels, finallyFlowForContinue, finallyFlowForBreakTo, breakLabels, returnFlow, catchClausesByCatchType)))
                     .collect(List.collector())
                     .appendAll(catchClausesByCatchType);
             return analyse(tryStmt.getTryBlock(), finallyFlowForContinue, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
