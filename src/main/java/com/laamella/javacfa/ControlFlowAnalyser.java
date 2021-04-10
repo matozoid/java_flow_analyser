@@ -140,6 +140,12 @@ public class ControlFlowAnalyser {
             SimpleFlow whileFlow = new SimpleFlow(node, CHOICE, next);
             whileFlow.setMayBranchTo(analyse(whileStmt.getBody(), whileFlow, continueLabels, whileFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
             return whileFlow;
+        } else if (node instanceof DoStmt) {
+            DoStmt doStmt = (DoStmt) node;
+            SimpleFlow conditionFlow = new SimpleFlow(node, CHOICE, next);
+            Flow bodyFlow = analyse(doStmt.getBody(), back, continueLabels, conditionFlow, next, breakLabels, returnFlow, catchClausesByCatchType);
+            conditionFlow.setMayBranchTo(bodyFlow);
+            return bodyFlow;
         } else if (node instanceof LabeledStmt) {
             LabeledStmt labeledStmt = (LabeledStmt) node;
             String label = labeledStmt.getLabel().asString();
