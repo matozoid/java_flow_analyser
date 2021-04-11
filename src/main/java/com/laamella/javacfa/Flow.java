@@ -190,8 +190,9 @@ public interface Flow {
             return indirection.getErrors();
         }
 
-        public void directTo(Flow flow) {
+        public Flow directTo(Flow flow) {
             indirection = flow;
+            return flow;
         }
 
         public Flow getIndirection() {
