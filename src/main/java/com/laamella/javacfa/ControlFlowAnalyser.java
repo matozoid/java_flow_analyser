@@ -6,6 +6,7 @@ import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.SimpleName;
+import com.github.javaparser.ast.nodeTypes.NodeWithStatements;
 import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.resolution.types.ResolvedType;
@@ -89,9 +90,9 @@ public class ControlFlowAnalyser {
                     .orElse(null);
         } else if (node instanceof ConstructorDeclaration) {
             return analyse(((ConstructorDeclaration) node).getBody(), back, continueLabels, next, next, breakLabels, returnFlow, catchClausesByCatchType);
-        } else if (node instanceof BlockStmt) {
-            BlockStmt blockStmt = (BlockStmt) node;
-            NodeList<Statement> statements = blockStmt.getStatements();
+        } else if (node instanceof NodeWithStatements) {
+            NodeWithStatements<?> nodeWithStatements = (NodeWithStatements<?>) node;
+            NodeList<Statement> statements = nodeWithStatements.getStatements();
             if (statements.size() == 0) {
                 // Skip this block completely.
                 return null;
@@ -109,12 +110,44 @@ public class ControlFlowAnalyser {
                         lastNext.directTo(stmtFlow);
                     }
                     lastNext = forwardDeclaredStmtNext;
-                    if (i == 0) {
+                    if (firstNode == null) {
                         firstNode = stmtFlow;
                     }
                 }
             }
             return firstNode;
+        } else if (node instanceof SwitchStmt) {
+            SwitchStmt switchStmt = (SwitchStmt) node;
+            Flow firstEntryFlow = null;
+            Flow previousEntryFlow = null;
+            ForwardDeclaredFlow previousNextEntryBodyFlow = null;
+            NodeList<SwitchEntry> caseEntries = switchStmt.getEntries();
+            for (int i = 0; i < caseEntries.size(); i++) {
+                SwitchEntry switchEntry = caseEntries.get(i);
+                ForwardDeclaredFlow forwardDeclaredNextEntryBody = new ForwardDeclaredFlow();
+                Flow nextEntry = i < caseEntries.size() - 1 ? forwardDeclaredNextEntryBody : next;
+                Flow entryBodyFlow = analyse(switchEntry, back, continueLabels, nextEntry, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
+
+                // Chain the entries
+                Flow entryFlow = new SimpleFlow(switchEntry, CHOICE, null);
+                entryFlow.setMayBranchTo(entryBodyFlow);
+                if (previousEntryFlow != null) {
+                    previousEntryFlow.setNext(entryFlow);
+                }
+                previousEntryFlow = entryFlow;
+                if (firstEntryFlow == null) {
+                    firstEntryFlow = entryFlow;
+                }
+
+                // Chain the statements in the entry bodies
+                if (entryBodyFlow != null) {
+                    if (previousNextEntryBodyFlow != null) {
+                        previousNextEntryBodyFlow.directTo(entryBodyFlow);
+                    }
+                    previousNextEntryBodyFlow = forwardDeclaredNextEntryBody;
+                }
+            }
+            return firstEntryFlow;
         } else if (node instanceof ContinueStmt) {
             return ((ContinueStmt) node).getLabel()
                     .map(SimpleName::asString)
