@@ -15,11 +15,13 @@ int x(){
 /* expected:
 1    START  -> 3
 3    CHOICE -> 5 or 4
-5    CHOICE -> 8 or 6
+5    CHOICE -> 7 or 6
 4    RETURN -> end
-8    CHOICE -> 10 or 9
+7    CHOICE -> 8 or 9
 6    RETURN -> end
-10   CHOICE -> end or 11
+8    CHOICE -> 10 or 9
 9    RETURN -> end
+10   CHOICE -> 13 or 11
+13   STEP   -> end
 11   THROW  -> end *** Cannot define a throws-flow without the symbol solver. ***
 */

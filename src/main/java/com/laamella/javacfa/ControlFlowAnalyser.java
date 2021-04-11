@@ -221,6 +221,10 @@ public class ControlFlowAnalyser {
         Map<SwitchEntry, Flow> entryToFirstStatementFlow = firstEntryFlow._2;
         return entriesInReverse
                 .foldLeft(next, (nextEntry, currentEntry) -> {
+                    if (currentEntry.getLabels().isEmpty()) {
+                        return entryToFirstStatementFlow.get(currentEntry).getOrElseThrow(RuntimeException::new);
+                    }
+
                     Flow simpleFlow = new SimpleFlow(currentEntry, CHOICE, nextEntry);
                     simpleFlow.setMayBranchTo(entryToFirstStatementFlow.get(currentEntry).getOrElseThrow(RuntimeException::new));
                     return simpleFlow;

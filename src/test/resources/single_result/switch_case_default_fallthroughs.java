@@ -33,7 +33,7 @@ void x(){
 10   CHOICE -> 17 or 12
 16   CHOICE -> 19 or 17
 17   STEP   -> 20
-12   BREAK  -> end
+12   BREAK  -> 22
 19   CHOICE -> 22 or 20
 20   STEP   -> 22
 22   STEP   -> end
