@@ -11,10 +11,10 @@ import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.resolution.types.ResolvedType;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.*;
+import io.vavr.collection.HashMap;
+import io.vavr.collection.List;
+import io.vavr.collection.Map;
 import io.vavr.control.Option;
-
-import java.util.Date;
 
 import static com.laamella.javacfa.Flow.ForwardDeclaredFlow;
 import static com.laamella.javacfa.Flow.Type.*;
@@ -89,8 +89,7 @@ public class ControlFlowAnalyser {
             return analyse(((ConstructorDeclaration) node).getBody(), back, continueLabels, next, next, breakLabels, returnFlow, catchClausesByCatchType);
         } else if (node instanceof NodeWithStatements) {
             return List.ofAll(((NodeWithStatements<?>) node).getStatements())
-                    .reverse()
-                    .foldLeft(next, (nextFlow, currentStmt) -> analyse(currentStmt, back, continueLabels, nextFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
+                    .foldRight(next, (currentStmt, nextFlow) -> analyse(currentStmt, back, continueLabels, nextFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
         } else if (node instanceof SwitchStmt) {
             return analyseSwitchStmt((SwitchStmt) node, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
         } else if (node instanceof EmptyStmt) {
@@ -117,13 +116,13 @@ public class ControlFlowAnalyser {
         } else if (node instanceof ForStmt) {
             ForStmt forStmt = (ForStmt) node;
             Flow forConditionFlow = new Flow(forStmt, CHOICE, next);
-            Flow updateFlow =List.ofAll(forStmt.getUpdate()).reverse()
-                    .foldLeft(forConditionFlow, (nextFlow, currentUpdater) -> new Flow(currentUpdater, FOR_UPDATE, nextFlow));
+            Flow updateFlow = List.ofAll(forStmt.getUpdate())
+                    .foldRight(forConditionFlow, (currentUpdater, nextFlow) -> new Flow(currentUpdater, FOR_UPDATE, nextFlow));
             forConditionFlow
                     .setMayBranchTo(analyse(forStmt.getBody(), updateFlow, continueLabels, updateFlow, next, breakLabels, returnFlow, catchClausesByCatchType))
                     .setCondition(forStmt.getCompare().orElse(null));
-            return List.ofAll(forStmt.getInitialization()).reverse()
-                    .foldLeft(forConditionFlow, (nextFlow, currentInitializer) -> new Flow(currentInitializer, FOR_INITIALIZATION, nextFlow));
+            return List.ofAll(forStmt.getInitialization())
+                    .foldRight(forConditionFlow, (currentInitializer, nextFlow) -> new Flow(currentInitializer, FOR_INITIALIZATION, nextFlow));
         } else if (node instanceof ForEachStmt) {
             ForEachStmt forEachStmt = (ForEachStmt) node;
             Flow forEachFlow = new Flow(node, CHOICE, next);
@@ -167,7 +166,8 @@ public class ControlFlowAnalyser {
         } else if (node instanceof Statement) {
             return new Flow(node, STEP, next);
         }
-        throw new IllegalArgumentException(String.format("%s doesn't have a flow.", node.getClass().getSimpleName()));
+        // No flow information in whatever we have now.
+        return next;
     }
 
     private Flow analyseTryStmt(TryStmt tryStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
@@ -192,11 +192,11 @@ public class ControlFlowAnalyser {
     }
 
     private Flow analyseSwitchStmt(SwitchStmt switchStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
-        List<SwitchEntry> entriesInReverse = List.ofAll(switchStmt.getEntries()).reverse();
+        List<SwitchEntry> entries = List.ofAll(switchStmt.getEntries());
 
         // Figure out the mapping of entries to statement flows:
-        Map<SwitchEntry, Flow> entryToFirstStatementFlow = entriesInReverse
-                .foldLeft(Tuple.of(next, HashMap.empty()), (Tuple2<Flow, Map<SwitchEntry, Flow>> nextEntry, SwitchEntry currentEntry) -> {
+        Map<SwitchEntry, Flow> entryToFirstStatementFlow = entries
+                .foldRight(Tuple.of(next, HashMap.empty()), (SwitchEntry currentEntry, Tuple2<Flow, Map<SwitchEntry, Flow>> nextEntry) -> {
                     Flow bodyFlow = analyse(currentEntry, back, continueLabels, nextEntry._1, next, breakLabels, returnFlow, catchClausesByCatchType);
                     if (bodyFlow == null) {
                         // Empty entry directly falls through to the next:
@@ -206,20 +206,19 @@ public class ControlFlowAnalyser {
                 })._2;
 
         // Create CHOICE nodes pointing to the statement flows and tie them together:
-        return entriesInReverse
-                .foldLeft(next, (nextEntry, currentEntry) -> {
-                    Flow bodyFlow = entryToFirstStatementFlow.get(currentEntry).getOrElseThrow(RuntimeException::new);
-                    if (currentEntry.getType() != SwitchEntry.Type.STATEMENT_GROUP) {
-                        bodyFlow.addError("Only classic switch is supported right now.");
-                    }
-                    if (currentEntry.getLabels().isEmpty()) {
-                        // The default case is not a choice. When all choices have been evaluated, default is mandatory.
-                        return bodyFlow;
-                    }
+        return entries.foldRight(next, (currentEntry, nextEntry) -> {
+            Flow bodyFlow = entryToFirstStatementFlow.get(currentEntry).getOrElseThrow(RuntimeException::new);
+            if (currentEntry.getType() != SwitchEntry.Type.STATEMENT_GROUP) {
+                bodyFlow.addError("Only classic switch is supported right now.");
+            }
+            if (currentEntry.getLabels().isEmpty()) {
+                // The default case is not a choice. When all choices have been evaluated, default is mandatory.
+                return bodyFlow;
+            }
 
-                    return new Flow(currentEntry, CHOICE, nextEntry)
-                            .setMayBranchTo(bodyFlow)
-                            .setCondition(currentEntry.getLabels().get(0));
-                });
+            return new Flow(currentEntry, CHOICE, nextEntry)
+                    .setMayBranchTo(bodyFlow)
+                    .setCondition(currentEntry.getLabels().get(0));
+        });
     }
 }
