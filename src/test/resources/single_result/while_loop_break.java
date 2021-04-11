@@ -16,12 +16,12 @@ void abc(int b) {
 }
 /* expected:
 1    START  -> 2
-2    CHOICE -> 15 or 3
+2    CHOICE -> 15 or 3 (cond: 2:12)
 15   RETURN -> end
-3    CHOICE -> 12 or 4
+3    CHOICE -> 12 or 4 (cond: 3:13)
 12   BREAK  -> 15
-4    CHOICE -> 9 or 5
+4    CHOICE -> 9 or 5 (cond: 4:20)
 9    BREAK  -> 15
-5    CHOICE -> 4 or 6
+5    CHOICE -> 4 or 6 (cond: 5:21)
 6    BREAK  -> 9
 */

@@ -24,14 +24,14 @@ void x(){
 /* expected:
 1    START  -> 2
 2    STEP   -> 4
-4    CHOICE -> 6 or 7
-6    CHOICE -> 8 or 7
+4    CHOICE -> 6 or 7 (cond: 4:14)
+6    CHOICE -> 8 or 7 (cond: 6:14)
 7    STEP   -> 9
-8    CHOICE -> 14 or 9
+8    CHOICE -> 14 or 9 (cond: 8:14)
 9    STEP   -> 10
-14   CHOICE -> 16 or 17
-10   CHOICE -> 17 or 12
-16   CHOICE -> 20 or 17
+14   CHOICE -> 16 or 17 (cond: 14:14)
+10   CHOICE -> 17 or 12 (cond: 10:20)
+16   CHOICE -> 20 or 17 (cond: 16:14)
 17   STEP   -> 20
 12   BREAK  -> 22
 20   STEP   -> 22

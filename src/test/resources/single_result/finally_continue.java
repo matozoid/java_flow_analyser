@@ -11,7 +11,7 @@ int x() {
 }
 /* expected:
 1    START  -> 2
-2    CHOICE -> end or 5
+2    CHOICE -> end or 5 (cond: 2:16)
 5    CONTIN -> 7
 7    STEP   -> 2
 */

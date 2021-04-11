@@ -7,7 +7,7 @@ int abc(int a, int b) {
 }
 /* expected:
 1    START  -> 2
-2    CHOICE -> 5 or 3
+2    CHOICE -> 5 or 3 (cond: 2:9)
 5    STEP   -> 6
 3    STEP   -> 6
 6    RETURN -> end

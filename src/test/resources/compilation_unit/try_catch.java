@@ -27,8 +27,8 @@ class X {
 }
 /* expected:
 4    START  -> 7
-7    CHOICE -> 10 or 8
-10   CHOICE -> 20 or 11
+7    CHOICE -> 10 or 8 (cond: 7:21)
+10   CHOICE -> 20 or 11 (cond: 10:21)
 8    THROW  -> 16
 20   STEP   -> 25
 11   THROW  -> 14

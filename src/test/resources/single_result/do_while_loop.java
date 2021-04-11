@@ -13,6 +13,6 @@ void abc(int b) {
 2    STEP   -> 6
 6    STEP   -> 7
 7    STEP   -> 5
-5    CHOICE -> 9 or 6
+5    CHOICE -> 9 or 6 (cond: 8:14)
 9    RETURN -> end
 */

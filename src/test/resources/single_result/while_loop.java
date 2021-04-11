@@ -9,7 +9,7 @@ void abc(int b) {
 /* expected:
 1    START  -> 2
 2    STEP   -> 3
-3    CHOICE -> 7 or 4
+3    CHOICE -> 7 or 4 (cond: 3:12)
 7    RETURN -> end
 4    STEP   -> 5
 5    STEP   -> 3

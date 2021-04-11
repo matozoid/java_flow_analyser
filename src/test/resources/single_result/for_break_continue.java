@@ -12,9 +12,9 @@ void x() {
 /* expected:
 1    START  -> 2
 2    FOR_IN -> 2
-2    CHOICE -> end or 3
-3    CHOICE -> 6 or 4
-6    CHOICE -> 2 or 7
+2    CHOICE -> end or 3 (cond: 2:28)
+3    CHOICE -> 6 or 4 (cond: 3:13)
+6    CHOICE -> 2 or 7 (cond: 6:13)
 4    CONTIN -> 2
 2    FOR_UP -> 2
 7    BREAK  -> end
