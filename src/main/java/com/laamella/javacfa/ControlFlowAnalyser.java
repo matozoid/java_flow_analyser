@@ -12,9 +12,7 @@ import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.resolution.types.ResolvedType;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.List;
-import io.vavr.collection.Map;
+import io.vavr.collection.*;
 
 import static com.laamella.javacfa.Flow.ForwardDeclaredFlow;
 import static com.laamella.javacfa.Flow.SimpleFlow;
@@ -207,35 +205,25 @@ public class ControlFlowAnalyser {
     }
 
     private Flow analyseSwitchStmt(SwitchStmt switchStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
-        Flow firstEntryFlow = null;
-        Flow previousEntryFlow = null;
-        ForwardDeclaredFlow previousNextEntryBodyFlow = null;
-        NodeList<SwitchEntry> caseEntries = switchStmt.getEntries();
-        for (int i = 0; i < caseEntries.size(); i++) {
-            SwitchEntry switchEntry = caseEntries.get(i);
-            ForwardDeclaredFlow forwardDeclaredNextEntryBody = new ForwardDeclaredFlow();
-            Flow nextEntry = i < caseEntries.size() - 1 ? forwardDeclaredNextEntryBody : next;
-            Flow entryBodyFlow = analyse(switchEntry, back, continueLabels, nextEntry, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
+        List<SwitchEntry> entriesInReverse = List.ofAll(switchStmt.getEntries()).reverse();
+        // Figure out the mapping of entries to statement flows:
+        Tuple2<Flow, Map<SwitchEntry, Flow>> firstEntryFlow = entriesInReverse
+                .foldLeft(Tuple.of(next, LinkedHashMap.empty()), (nextEntry, currentEntry) -> {
+                    Flow bodyFlow = analyse(currentEntry, back, continueLabels, nextEntry._1, next, breakLabels, returnFlow, catchClausesByCatchType);
+                    if (bodyFlow == null) {
+                        // Empty entry directly falls through to the next:
+                        bodyFlow = nextEntry._1;
+                    }
+                    return Tuple.of(bodyFlow, nextEntry._2.put(currentEntry, bodyFlow));
+                });
 
-            // Chain the entries
-            Flow entryFlow = new SimpleFlow(switchEntry, CHOICE, null);
-            entryFlow.setMayBranchTo(entryBodyFlow);
-            if (previousEntryFlow != null) {
-                previousEntryFlow.setNext(entryFlow);
-            }
-            previousEntryFlow = entryFlow;
-            if (firstEntryFlow == null) {
-                firstEntryFlow = entryFlow;
-            }
-
-            // Chain the statements in the entry bodies
-            if (entryBodyFlow != null) {
-                if (previousNextEntryBodyFlow != null) {
-                    previousNextEntryBodyFlow.directTo(entryBodyFlow);
-                }
-                previousNextEntryBodyFlow = forwardDeclaredNextEntryBody;
-            }
-        }
-        return firstEntryFlow;
+        // Create CHOICE nodes pointing to the statement flows and tie them together:
+        Map<SwitchEntry, Flow> entryToFirstStatementFlow = firstEntryFlow._2;
+        return entriesInReverse
+                .foldLeft(next, (nextEntry, currentEntry) -> {
+                    Flow simpleFlow = new SimpleFlow(currentEntry, CHOICE, nextEntry);
+                    simpleFlow.setMayBranchTo(entryToFirstStatementFlow.get(currentEntry).getOrElseThrow(RuntimeException::new));
+                    return simpleFlow;
+                });
     }
 }

@@ -24,17 +24,17 @@ void x(){
 /* expected:
 1    START  -> 2
 2    STEP   -> 4
-4    CHOICE -> 6
+4    CHOICE -> 6 or 7
 6    CHOICE -> 8 or 7
-8    CHOICE -> 14 or 9
 7    STEP   -> 9
-14   CHOICE -> 16
+8    CHOICE -> 14 or 9
 9    STEP   -> 10
-16   CHOICE -> 19 or 17
+14   CHOICE -> 16 or 17
 10   CHOICE -> 17 or 12
-19   CHOICE -> end or 20
+16   CHOICE -> 19 or 17
 17   STEP   -> 20
 12   BREAK  -> end
+19   CHOICE -> 22 or 20
 20   STEP   -> 22
 22   STEP   -> end
 */
