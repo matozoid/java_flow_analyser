@@ -16,8 +16,6 @@ import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
 
-import java.util.Arrays;
-
 import static com.laamella.javacfa.Flow.ForwardDeclaredFlow;
 import static com.laamella.javacfa.Flow.SimpleFlow;
 import static com.laamella.javacfa.Flow.Type.*;
@@ -91,63 +89,9 @@ public class ControlFlowAnalyser {
         } else if (node instanceof ConstructorDeclaration) {
             return analyse(((ConstructorDeclaration) node).getBody(), back, continueLabels, next, next, breakLabels, returnFlow, catchClausesByCatchType);
         } else if (node instanceof NodeWithStatements) {
-            NodeWithStatements<?> nodeWithStatements = (NodeWithStatements<?>) node;
-            NodeList<Statement> statements = nodeWithStatements.getStatements();
-            if (statements.size() == 0) {
-                // Skip this block completely.
-                return null;
-            }
-            Flow firstNode = null;
-
-            ForwardDeclaredFlow lastNext = null;
-            for (int i = 0; i < statements.size(); i++) {
-                Statement stmt = statements.get(i);
-                ForwardDeclaredFlow forwardDeclaredStmtNext = new ForwardDeclaredFlow();
-                Flow stmtNext = i < statements.size() - 1 ? forwardDeclaredStmtNext : next;
-                Flow stmtFlow = analyse(stmt, back, continueLabels, stmtNext, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
-                if (stmtFlow != null) {
-                    if (lastNext != null) {
-                        lastNext.directTo(stmtFlow);
-                    }
-                    lastNext = forwardDeclaredStmtNext;
-                    if (firstNode == null) {
-                        firstNode = stmtFlow;
-                    }
-                }
-            }
-            return firstNode;
+            return analyseNodeWithStatements((NodeWithStatements<?>) node, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
         } else if (node instanceof SwitchStmt) {
-            SwitchStmt switchStmt = (SwitchStmt) node;
-            Flow firstEntryFlow = null;
-            Flow previousEntryFlow = null;
-            ForwardDeclaredFlow previousNextEntryBodyFlow = null;
-            NodeList<SwitchEntry> caseEntries = switchStmt.getEntries();
-            for (int i = 0; i < caseEntries.size(); i++) {
-                SwitchEntry switchEntry = caseEntries.get(i);
-                ForwardDeclaredFlow forwardDeclaredNextEntryBody = new ForwardDeclaredFlow();
-                Flow nextEntry = i < caseEntries.size() - 1 ? forwardDeclaredNextEntryBody : next;
-                Flow entryBodyFlow = analyse(switchEntry, back, continueLabels, nextEntry, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
-
-                // Chain the entries
-                Flow entryFlow = new SimpleFlow(switchEntry, CHOICE, null);
-                entryFlow.setMayBranchTo(entryBodyFlow);
-                if (previousEntryFlow != null) {
-                    previousEntryFlow.setNext(entryFlow);
-                }
-                previousEntryFlow = entryFlow;
-                if (firstEntryFlow == null) {
-                    firstEntryFlow = entryFlow;
-                }
-
-                // Chain the statements in the entry bodies
-                if (entryBodyFlow != null) {
-                    if (previousNextEntryBodyFlow != null) {
-                        previousNextEntryBodyFlow.directTo(entryBodyFlow);
-                    }
-                    previousNextEntryBodyFlow = forwardDeclaredNextEntryBody;
-                }
-            }
-            return firstEntryFlow;
+            return analyseSwitchStmt((SwitchStmt) node, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
         } else if (node instanceof ContinueStmt) {
             return ((ContinueStmt) node).getLabel()
                     .map(SimpleName::asString)
@@ -194,25 +138,7 @@ public class ControlFlowAnalyser {
             labeledFlow.directTo(directFlow);
             return labeledFlow;
         } else if (node instanceof TryStmt) {
-            TryStmt tryStmt = (TryStmt) node;
-            // We have to redirect all the flows escaping this block through the finally block.
-            Flow finallyFlow = tryStmt.getFinallyBlock()
-                    .map(fb -> analyse(fb, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
-                    .orElse(next);
-            Flow finallyFlowForContinue = tryStmt.getFinallyBlock()
-                    .map(fb -> analyse(fb, back, continueLabels, back, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
-                    .orElse(next);
-            Flow finallyFlowForBreakTo = tryStmt.getFinallyBlock()
-                    .map(fb -> analyse(fb, back, continueLabels, breakTo, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
-                    .orElse(next);
-            // TODO redirect labeled breaks through the finally block
-            // TODO redirect labeled continues through the finally block
-            List<Tuple2<Type, Flow>> newCatchClausesByCatchType = tryStmt.getCatchClauses().stream()
-                    .map(cc -> Tuple.of(cc.getParameter().getType(),
-                            analyse(cc.getBody(), back, continueLabels, finallyFlowForContinue, finallyFlowForBreakTo, breakLabels, returnFlow, catchClausesByCatchType)))
-                    .collect(List.collector())
-                    .appendAll(catchClausesByCatchType);
-            return analyse(tryStmt.getTryBlock(), finallyFlowForContinue, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
+            return analyseTryStmt((TryStmt) node, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
         } else if (node instanceof ThrowStmt) {
             try {
                 ResolvedType thrownType = ((ThrowStmt) node).getExpression().calculateResolvedType();
@@ -230,5 +156,86 @@ public class ControlFlowAnalyser {
             return new SimpleFlow(node, STEP, next);
         }
         throw new IllegalArgumentException(String.format("%s doesn't have a flow.", node.getClass().getSimpleName()));
+    }
+
+    private Flow analyseTryStmt(TryStmt tryStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
+        // We have to redirect all the flows escaping this block through the finally block.
+        Flow finallyFlow = tryStmt.getFinallyBlock()
+                .map(fb -> analyse(fb, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                .orElse(next);
+        Flow finallyFlowForContinue = tryStmt.getFinallyBlock()
+                .map(fb -> analyse(fb, back, continueLabels, back, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                .orElse(next);
+        Flow finallyFlowForBreakTo = tryStmt.getFinallyBlock()
+                .map(fb -> analyse(fb, back, continueLabels, breakTo, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                .orElse(next);
+        // TODO redirect labeled breaks through the finally block
+        // TODO redirect labeled continues through the finally block
+        List<Tuple2<Type, Flow>> newCatchClausesByCatchType = tryStmt.getCatchClauses().stream()
+                .map(cc -> Tuple.of(cc.getParameter().getType(),
+                        analyse(cc.getBody(), back, continueLabels, finallyFlowForContinue, finallyFlowForBreakTo, breakLabels, returnFlow, catchClausesByCatchType)))
+                .collect(List.collector())
+                .appendAll(catchClausesByCatchType);
+        return analyse(tryStmt.getTryBlock(), finallyFlowForContinue, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
+    }
+
+    private Flow analyseNodeWithStatements(NodeWithStatements<?> nodeWithStatements, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
+        NodeList<Statement> statements = nodeWithStatements.getStatements();
+        if (statements.size() == 0) {
+            // Skip this block completely.
+            return null;
+        }
+        Flow firstNode = null;
+
+        ForwardDeclaredFlow lastNext = null;
+        for (int i = 0; i < statements.size(); i++) {
+            Statement stmt = statements.get(i);
+            ForwardDeclaredFlow forwardDeclaredStmtNext = new ForwardDeclaredFlow();
+            Flow stmtNext = i < statements.size() - 1 ? forwardDeclaredStmtNext : next;
+            Flow stmtFlow = analyse(stmt, back, continueLabels, stmtNext, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
+            if (stmtFlow != null) {
+                if (lastNext != null) {
+                    lastNext.directTo(stmtFlow);
+                }
+                lastNext = forwardDeclaredStmtNext;
+                if (firstNode == null) {
+                    firstNode = stmtFlow;
+                }
+            }
+        }
+        return firstNode;
+    }
+
+    private Flow analyseSwitchStmt(SwitchStmt switchStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
+        Flow firstEntryFlow = null;
+        Flow previousEntryFlow = null;
+        ForwardDeclaredFlow previousNextEntryBodyFlow = null;
+        NodeList<SwitchEntry> caseEntries = switchStmt.getEntries();
+        for (int i = 0; i < caseEntries.size(); i++) {
+            SwitchEntry switchEntry = caseEntries.get(i);
+            ForwardDeclaredFlow forwardDeclaredNextEntryBody = new ForwardDeclaredFlow();
+            Flow nextEntry = i < caseEntries.size() - 1 ? forwardDeclaredNextEntryBody : next;
+            Flow entryBodyFlow = analyse(switchEntry, back, continueLabels, nextEntry, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
+
+            // Chain the entries
+            Flow entryFlow = new SimpleFlow(switchEntry, CHOICE, null);
+            entryFlow.setMayBranchTo(entryBodyFlow);
+            if (previousEntryFlow != null) {
+                previousEntryFlow.setNext(entryFlow);
+            }
+            previousEntryFlow = entryFlow;
+            if (firstEntryFlow == null) {
+                firstEntryFlow = entryFlow;
+            }
+
+            // Chain the statements in the entry bodies
+            if (entryBodyFlow != null) {
+                if (previousNextEntryBodyFlow != null) {
+                    previousNextEntryBodyFlow.directTo(entryBodyFlow);
+                }
+                previousNextEntryBodyFlow = forwardDeclaredNextEntryBody;
+            }
+        }
+        return firstEntryFlow;
     }
 }
