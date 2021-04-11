@@ -1,6 +1,7 @@
 package com.laamella.javacfa;
 
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.expr.Expression;
 import io.vavr.Tuple;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -13,6 +14,7 @@ public class Flow {
     private Type type;
     private Flow next;
     private Flow mayBranchTo = null;
+    private Expression condition = null;
     private List<String> errors = List.empty();
 
     public Flow(Node node, Type type, Flow next) {
@@ -83,6 +85,19 @@ public class Flow {
         return new Visitor(this)
                 .map(flow -> Tuple.of(flow, flow.getErrors()))
                 .foldLeft(HashMap.empty(), HashMap::put);
+    }
+
+    /**
+     * @return when the node type is CHOICE, this will point to the condition expression, if applicable.
+     * When it resolves to true, the branch is taken, else next is taken.
+     */
+    public Expression getCondition() {
+        return condition;
+    }
+
+    public Flow setCondition(Expression condition) {
+        this.condition = condition;
+        return this;
     }
 
     enum Type {

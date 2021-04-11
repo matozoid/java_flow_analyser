@@ -1,6 +1,8 @@
 package com.laamella.javacfa;
 
 
+import com.github.javaparser.ast.expr.Expression;
+
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -24,12 +26,19 @@ public class DebugOutput {
         }
         if (flow.getMayBranchTo() != null) {
             output.append(" or " + extractLineNumber(flow.getMayBranchTo()));
+            if (flow.getCondition() != null) {
+                output.append(" (cond: " + extractChoiceLineColNumber(flow.getCondition()) + ")");
+            }
         }
-        if(!flow.getErrors().isEmpty()) {
+        if (!flow.getErrors().isEmpty()) {
             output.append(flow.getErrors().mkString(" *** ", ", ", " ***"));
         }
 
         output.append("\n");
+    }
+
+    private String extractChoiceLineColNumber(Expression condition) {
+        return condition.getRange().map(range -> "" + range.begin.line + ":" + range.begin.column).orElse("end");
     }
 
     private String extractLineNumber(Flow flow) {

@@ -104,7 +104,8 @@ public class ControlFlowAnalyser {
         } else if (node instanceof IfStmt) {
             IfStmt ifStmt = (IfStmt) node;
             Flow ifFlow = new Flow(node, CHOICE, null)
-                    .setMayBranchTo(analyse(ifStmt.getThenStmt(), back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
+                    .setMayBranchTo(analyse(ifStmt.getThenStmt(), back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                    .setCondition(ifStmt.getCondition());
 
             return Option.ofOptional(ifStmt.getElseStmt())
                     .map(elseStmt -> ifFlow.setNext(analyse(elseStmt, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType)))
@@ -114,7 +115,8 @@ public class ControlFlowAnalyser {
             Flow forConditionFlow = new Flow(forStmt, CHOICE, next);
             Flow updateFlow = new Flow(forStmt, FOR_UPDATE, forConditionFlow);
             forConditionFlow
-                    .setMayBranchTo(analyse(forStmt.getBody(), updateFlow, continueLabels, updateFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
+                    .setMayBranchTo(analyse(forStmt.getBody(), updateFlow, continueLabels, updateFlow, next, breakLabels, returnFlow, catchClausesByCatchType))
+                    .setCondition(forStmt.getCompare().orElse(null));
             return new Flow(forStmt, FOR_INITIALIZATION, forConditionFlow);
         } else if (node instanceof ForEachStmt) {
             ForEachStmt forEachStmt = (ForEachStmt) node;
@@ -125,12 +127,15 @@ public class ControlFlowAnalyser {
             WhileStmt whileStmt = (WhileStmt) node;
             Flow whileFlow = new Flow(node, CHOICE, next);
             return whileFlow
-                    .setMayBranchTo(analyse(whileStmt.getBody(), whileFlow, continueLabels, whileFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
+                    .setMayBranchTo(analyse(whileStmt.getBody(), whileFlow, continueLabels, whileFlow, next, breakLabels, returnFlow, catchClausesByCatchType))
+                    .setCondition(whileStmt.getCondition());
         } else if (node instanceof DoStmt) {
             DoStmt doStmt = (DoStmt) node;
             Flow conditionFlow = new Flow(node, CHOICE, next);
             Flow bodyFlow = analyse(doStmt.getBody(), back, continueLabels, conditionFlow, next, breakLabels, returnFlow, catchClausesByCatchType);
-            conditionFlow.setMayBranchTo(bodyFlow);
+            conditionFlow
+                    .setMayBranchTo(bodyFlow)
+                    .setCondition(doStmt.getCondition());
             return bodyFlow;
         } else if (node instanceof LabeledStmt) {
             LabeledStmt labeledStmt = (LabeledStmt) node;
@@ -182,6 +187,7 @@ public class ControlFlowAnalyser {
 
     private Flow analyseSwitchStmt(SwitchStmt switchStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
         List<SwitchEntry> entriesInReverse = List.ofAll(switchStmt.getEntries()).reverse();
+
         // Figure out the mapping of entries to statement flows:
         Map<SwitchEntry, Flow> entryToFirstStatementFlow = entriesInReverse
                 .foldLeft(Tuple.of(next, HashMap.empty()), (Tuple2<Flow, Map<SwitchEntry, Flow>> nextEntry, SwitchEntry currentEntry) -> {
@@ -197,13 +203,17 @@ public class ControlFlowAnalyser {
         return entriesInReverse
                 .foldLeft(next, (nextEntry, currentEntry) -> {
                     Flow bodyFlow = entryToFirstStatementFlow.get(currentEntry).getOrElseThrow(RuntimeException::new);
+                    if (currentEntry.getType() != SwitchEntry.Type.STATEMENT_GROUP) {
+                        bodyFlow.addError("Only classic switch is supported right now.");
+                    }
                     if (currentEntry.getLabels().isEmpty()) {
                         // The default case is not a choice. When all choices have been evaluated, default is mandatory.
                         return bodyFlow;
                     }
 
                     return new Flow(currentEntry, CHOICE, nextEntry)
-                            .setMayBranchTo(bodyFlow);
+                            .setMayBranchTo(bodyFlow)
+                            .setCondition(currentEntry.getLabels().get(0));
                 });
     }
 }
