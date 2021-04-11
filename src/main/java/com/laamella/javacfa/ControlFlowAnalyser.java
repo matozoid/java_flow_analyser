@@ -97,12 +97,16 @@ public class ControlFlowAnalyser {
         } else if (node instanceof ContinueStmt) {
             return ((ContinueStmt) node).getLabel()
                     .map(SimpleName::asString)
-                    .map(label -> new Flow(node, CONTINUE, continueLabels.getOrElse(label, null)))
+                    .map(label -> continueLabels.get(label)
+                            .map(labeledFlow -> new Flow(node, CONTINUE, labeledFlow))
+                            .getOrElse(new Flow(node, CONTINUE, null).addError("Continue label not found: " + label)))
                     .orElseGet(() -> new Flow(node, CONTINUE, back));
         } else if (node instanceof BreakStmt) {
             return ((BreakStmt) node).getLabel()
                     .map(SimpleName::asString)
-                    .map(label -> new Flow(node, BREAK, breakLabels.getOrElse(label, null)))
+                    .map(label -> breakLabels.get(label)
+                            .map(labeledFlow -> new Flow(node, BREAK, labeledFlow))
+                            .getOrElse(new Flow(node, BREAK, null).addError("Break label not found: " + label)))
                     .orElseGet(() -> new Flow(node, BREAK, breakTo));
         } else if (node instanceof IfStmt) {
             IfStmt ifStmt = (IfStmt) node;
