@@ -19,9 +19,7 @@ int x(){
 4    RETURN -> end
 7    CHOICE -> 8 or 9
 6    RETURN -> end
-8    CHOICE -> 10 or 9
+8    CHOICE -> 11 or 9
 9    RETURN -> end
-10   CHOICE -> 13 or 11
-13   STEP   -> end
 11   THROW  -> end *** Cannot define a throws-flow without the symbol solver. ***
 */

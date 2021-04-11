@@ -13,6 +13,7 @@ import com.github.javaparser.resolution.types.ResolvedType;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.*;
+import io.vavr.control.Option;
 
 import static com.laamella.javacfa.Flow.ForwardDeclaredFlow;
 import static com.laamella.javacfa.Flow.SimpleFlow;
@@ -105,13 +106,9 @@ public class ControlFlowAnalyser {
             SimpleFlow ifFlow = new SimpleFlow(node, CHOICE, null);
             ifFlow.setMayBranchTo(analyse(ifStmt.getThenStmt(), back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
 
-            if (ifStmt.hasElseBranch()) {
-                Statement elseStmt = ifStmt.getElseStmt().get();
-                ifFlow.setNext(analyse(elseStmt, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
-            } else {
-                ifFlow.setNext(next);
-            }
-            return ifFlow;
+            return Option.ofOptional(ifStmt.getElseStmt())
+                    .map(elseStmt -> ifFlow.setNext(analyse(elseStmt, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType)))
+                    .getOrElse(() -> ifFlow.setNext(next));
         } else if (node instanceof ForEachStmt) {
             ForEachStmt forEachStmt = (ForEachStmt) node;
             SimpleFlow forEachFlow = new SimpleFlow(node, CHOICE, next);
