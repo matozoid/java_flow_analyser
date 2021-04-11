@@ -76,7 +76,15 @@ public interface Flow {
         /**
          * At this point the code throws an exception, which is caught at next.
          */
-        THROW
+        THROW,
+        /**
+         * This flow runs the initialization part of the classic for statement.
+         */
+        FOR_INITIALIZATION,
+        /**
+         * This flow runs the update part of the classic for statement.
+         */
+        FOR_UPDATE
     }
 
     class SimpleFlow implements Flow {

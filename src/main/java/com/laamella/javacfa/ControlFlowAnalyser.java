@@ -110,6 +110,13 @@ public class ControlFlowAnalyser {
             return Option.ofOptional(ifStmt.getElseStmt())
                     .map(elseStmt -> ifFlow.setNext(analyse(elseStmt, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType)))
                     .getOrElse(() -> ifFlow.setNext(next));
+        } else if (node instanceof ForStmt) {
+            ForStmt forStmt = (ForStmt) node;
+            Flow forConditionFlow = new SimpleFlow(forStmt, CHOICE, next);
+            Flow updateFlow = new SimpleFlow(forStmt, FOR_UPDATE, forConditionFlow);
+            forConditionFlow
+                    .setMayBranchTo(analyse(forStmt.getBody(), updateFlow, continueLabels, updateFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
+            return new SimpleFlow(forStmt, FOR_INITIALIZATION, forConditionFlow);
         } else if (node instanceof ForEachStmt) {
             ForEachStmt forEachStmt = (ForEachStmt) node;
             SimpleFlow forEachFlow = new SimpleFlow(node, CHOICE, next);

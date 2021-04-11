@@ -65,8 +65,9 @@ class ControlFlowAnalyserTest {
     private Node parse(String testCase) {
         JavaParser jp = new JavaParser();
         return parseAs(testCase, jp::parseBlock)
-                .getOrElse(parseAs(testCase, jp::parseBodyDeclaration)
-                        .getOrElseThrow(AssertionFailedError::new));
+                .getOrElse(() -> parseAs(testCase, jp::parseBodyDeclaration)
+                        .getOrElse(() -> parseAs(testCase, jp::parseStatement)
+                                .getOrElseThrow(AssertionFailedError::new)));
     }
 
     private Option<Node> parseAs(String testCase, Function<String, ParseResult<? extends Node>> parse) {
