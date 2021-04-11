@@ -18,4 +18,5 @@ void x() {
 4    CONTIN -> 2
 2    FOR_UP -> 2
 7    BREAK  -> end
+2    FOR_UP -> 2
 */

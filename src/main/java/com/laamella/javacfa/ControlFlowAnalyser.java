@@ -14,6 +14,8 @@ import io.vavr.Tuple2;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
 
+import java.util.Date;
+
 import static com.laamella.javacfa.Flow.ForwardDeclaredFlow;
 import static com.laamella.javacfa.Flow.Type.*;
 
@@ -115,11 +117,13 @@ public class ControlFlowAnalyser {
         } else if (node instanceof ForStmt) {
             ForStmt forStmt = (ForStmt) node;
             Flow forConditionFlow = new Flow(forStmt, CHOICE, next);
-            Flow updateFlow = new Flow(forStmt, FOR_UPDATE, forConditionFlow);
+            Flow updateFlow =List.ofAll(forStmt.getUpdate()).reverse()
+                    .foldLeft(forConditionFlow, (nextFlow, currentUpdater) -> new Flow(currentUpdater, FOR_UPDATE, nextFlow));
             forConditionFlow
                     .setMayBranchTo(analyse(forStmt.getBody(), updateFlow, continueLabels, updateFlow, next, breakLabels, returnFlow, catchClausesByCatchType))
                     .setCondition(forStmt.getCompare().orElse(null));
-            return new Flow(forStmt, FOR_INITIALIZATION, forConditionFlow);
+            return List.ofAll(forStmt.getInitialization()).reverse()
+                    .foldLeft(forConditionFlow, (nextFlow, currentInitializer) -> new Flow(currentInitializer, FOR_INITIALIZATION, nextFlow));
         } else if (node instanceof ForEachStmt) {
             ForEachStmt forEachStmt = (ForEachStmt) node;
             Flow forEachFlow = new Flow(node, CHOICE, next);
