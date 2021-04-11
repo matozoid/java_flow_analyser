@@ -91,7 +91,7 @@ public class ControlFlowAnalyser {
             return List.ofAll(((NodeWithStatements<?>) node).getStatements())
                     .foldRight(next, (currentStmt, nextFlow) -> analyse(currentStmt, back, continueLabels, nextFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
         } else if (node instanceof SwitchStmt) {
-            return analyseSwitchStmt((SwitchStmt) node, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
+            return analyseSwitchStmt((SwitchStmt) node, back, continueLabels, next, breakLabels, returnFlow, catchClausesByCatchType);
         } else if (node instanceof EmptyStmt) {
             return next;
         } else if (node instanceof ContinueStmt) {
@@ -195,7 +195,7 @@ public class ControlFlowAnalyser {
         return analyse(tryStmt.getTryBlock(), finallyFlowForContinue, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
     }
 
-    private Flow analyseSwitchStmt(SwitchStmt switchStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Flow breakTo, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
+    private Flow analyseSwitchStmt(SwitchStmt switchStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
         List<SwitchEntry> entries = List.ofAll(switchStmt.getEntries());
 
         // Figure out the mapping of entries to statement flows:
