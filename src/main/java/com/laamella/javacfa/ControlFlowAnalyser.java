@@ -15,7 +15,6 @@ import io.vavr.collection.*;
 import io.vavr.control.Option;
 
 import static com.laamella.javacfa.Flow.ForwardDeclaredFlow;
-import static com.laamella.javacfa.Flow.SimpleFlow;
 import static com.laamella.javacfa.Flow.Type.*;
 
 public class ControlFlowAnalyser {
@@ -39,7 +38,7 @@ public class ControlFlowAnalyser {
      * @return the control flow graph start node.
      */
     public Flow analyse(Node node) {
-        SimpleFlow startNode = new SimpleFlow(node, START, null);
+        Flow startNode = new Flow(node, START, null);
         Flow flow = analyse(node, null, HashMap.empty(), null, null, HashMap.empty(), null, List.empty());
         if (flow == null) {
             return null;
@@ -95,16 +94,16 @@ public class ControlFlowAnalyser {
         } else if (node instanceof ContinueStmt) {
             return ((ContinueStmt) node).getLabel()
                     .map(SimpleName::asString)
-                    .map(label -> new SimpleFlow(node, CONTINUE, continueLabels.getOrElse(label, null)))
-                    .orElseGet(() -> new SimpleFlow(node, CONTINUE, back));
+                    .map(label -> new Flow(node, CONTINUE, continueLabels.getOrElse(label, null)))
+                    .orElseGet(() -> new Flow(node, CONTINUE, back));
         } else if (node instanceof BreakStmt) {
             return ((BreakStmt) node).getLabel()
                     .map(SimpleName::asString)
-                    .map(label -> new SimpleFlow(node, BREAK, breakLabels.getOrElse(label, null)))
-                    .orElseGet(() -> new SimpleFlow(node, BREAK, breakTo));
+                    .map(label -> new Flow(node, BREAK, breakLabels.getOrElse(label, null)))
+                    .orElseGet(() -> new Flow(node, BREAK, breakTo));
         } else if (node instanceof IfStmt) {
             IfStmt ifStmt = (IfStmt) node;
-            Flow ifFlow = new SimpleFlow(node, CHOICE, null)
+            Flow ifFlow = new Flow(node, CHOICE, null)
                     .setMayBranchTo(analyse(ifStmt.getThenStmt(), back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
 
             return Option.ofOptional(ifStmt.getElseStmt())
@@ -112,24 +111,24 @@ public class ControlFlowAnalyser {
                     .getOrElse(() -> ifFlow.setNext(next));
         } else if (node instanceof ForStmt) {
             ForStmt forStmt = (ForStmt) node;
-            Flow forConditionFlow = new SimpleFlow(forStmt, CHOICE, next);
-            Flow updateFlow = new SimpleFlow(forStmt, FOR_UPDATE, forConditionFlow);
+            Flow forConditionFlow = new Flow(forStmt, CHOICE, next);
+            Flow updateFlow = new Flow(forStmt, FOR_UPDATE, forConditionFlow);
             forConditionFlow
                     .setMayBranchTo(analyse(forStmt.getBody(), updateFlow, continueLabels, updateFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
-            return new SimpleFlow(forStmt, FOR_INITIALIZATION, forConditionFlow);
+            return new Flow(forStmt, FOR_INITIALIZATION, forConditionFlow);
         } else if (node instanceof ForEachStmt) {
             ForEachStmt forEachStmt = (ForEachStmt) node;
-            SimpleFlow forEachFlow = new SimpleFlow(node, CHOICE, next);
+            Flow forEachFlow = new Flow(node, CHOICE, next);
             return forEachFlow
                     .setMayBranchTo(analyse(forEachStmt.getBody(), forEachFlow, continueLabels, forEachFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
         } else if (node instanceof WhileStmt) {
             WhileStmt whileStmt = (WhileStmt) node;
-            SimpleFlow whileFlow = new SimpleFlow(node, CHOICE, next);
+            Flow whileFlow = new Flow(node, CHOICE, next);
             return whileFlow
                     .setMayBranchTo(analyse(whileStmt.getBody(), whileFlow, continueLabels, whileFlow, next, breakLabels, returnFlow, catchClausesByCatchType));
         } else if (node instanceof DoStmt) {
             DoStmt doStmt = (DoStmt) node;
-            Flow conditionFlow = new SimpleFlow(node, CHOICE, next);
+            Flow conditionFlow = new Flow(node, CHOICE, next);
             Flow bodyFlow = analyse(doStmt.getBody(), back, continueLabels, conditionFlow, next, breakLabels, returnFlow, catchClausesByCatchType);
             conditionFlow.setMayBranchTo(bodyFlow);
             return bodyFlow;
@@ -147,15 +146,15 @@ public class ControlFlowAnalyser {
                 Flow correspondingCatch = catchClausesByCatchType
                         .find(tuple -> thrownType.isAssignableBy(tuple._1.resolve())).map(tuple -> tuple._2)
                         .getOrElse((Flow) null);
-                return new SimpleFlow(node, THROW, correspondingCatch);
+                return new Flow(node, THROW, correspondingCatch);
             } catch (IllegalStateException e) {
-                return new SimpleFlow(node, THROW, null)
+                return new Flow(node, THROW, null)
                         .addError("Cannot define a throws-flow without the symbol solver.");
             }
         } else if (node instanceof ReturnStmt) {
-            return new SimpleFlow(node, RETURN, returnFlow);
+            return new Flow(node, RETURN, returnFlow);
         } else if (node instanceof Statement) {
-            return new SimpleFlow(node, STEP, next);
+            return new Flow(node, STEP, next);
         }
         throw new IllegalArgumentException(String.format("%s doesn't have a flow.", node.getClass().getSimpleName()));
     }
@@ -203,7 +202,7 @@ public class ControlFlowAnalyser {
                         return bodyFlow;
                     }
 
-                    return new SimpleFlow(currentEntry, CHOICE, nextEntry)
+                    return new Flow(currentEntry, CHOICE, nextEntry)
                             .setMayBranchTo(bodyFlow);
                 });
     }

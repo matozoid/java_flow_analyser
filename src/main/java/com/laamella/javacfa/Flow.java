@@ -4,45 +4,82 @@ import com.github.javaparser.ast.Node;
 import io.vavr.Tuple;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
+import io.vavr.collection.Map;
 
 import static java.util.Objects.requireNonNull;
 
-public interface Flow {
+public class Flow {
+    private final Node node;
+    private Type type;
+    private Flow next;
+    private Flow mayBranchTo = null;
+    private List<String> errors = List.empty();
+
+    public Flow(Node node, Type type, Flow next) {
+        this.node = node;
+        this.type = requireNonNull(type);
+        this.next = next;
+    }
+
     /**
      * @return the JavaParser AST node.
      */
-    Node getNode();
+    public Node getNode() {
+        return node;
+    }
 
     /**
      * @return the flow that may be branched to, or null if there is no branch.
      */
-    Flow getMayBranchTo();
+    public Flow getMayBranchTo() {
+        return mayBranchTo;
+    }
 
     /**
      * @return the normally taken flow, or null when the flow ends after this step.
      */
-    Flow getNext();
+    public Flow getNext() {
+        return next;
+    }
 
     /**
      * @return an indication of the kind of flow.
      */
-    Type getType();
+    public Type getType() {
+        return type;
+    }
 
-    Flow setNext(Flow next);
+    public Flow setNext(Flow next) {
+        this.next = next;
+        return this;
+    }
 
-    Flow setMayBranchTo(Flow mayBranchTo);
+    public Flow setMayBranchTo(Flow mayBranchTo) {
+        this.mayBranchTo = mayBranchTo;
+        return this;
+    }
 
-    Flow setType(Type type);
+    public Flow setType(Type type) {
+        this.type = type;
+        return this;
+    }
 
     /**
      * @return the errors for this flow node.
      */
-    List<String> getErrors();
+    public List<String> getErrors() {
+        return errors;
+    }
+
+    public Flow addError(String message) {
+        this.errors = errors.append(message);
+        return this;
+    }
 
     /**
      * @return the errors for all flow nodes.
      */
-    default HashMap<Flow, List<String>> getAllErrors() {
+    public Map<Flow, List<String>> getAllErrors() {
         return new Visitor(this)
                 .map(flow -> Tuple.of(flow, flow.getErrors()))
                 .foldLeft(HashMap.empty(), HashMap::put);
@@ -87,73 +124,18 @@ public interface Flow {
         FOR_UPDATE
     }
 
-    class SimpleFlow implements Flow {
-        private final Node node;
-        private Type type;
-        private Flow next;
-        private Flow mayBranchTo = null;
-        private List<String> errors = List.empty();
-
-        public SimpleFlow(Node node, Type type, Flow next) {
-            this.node = node;
-            this.type = requireNonNull(type);
-            this.next = next;
-        }
-
-        @Override
-        public Node getNode() {
-            return node;
-        }
-
-        @Override
-        public Flow getMayBranchTo() {
-            return mayBranchTo;
-        }
-
-        @Override
-        public Flow getNext() {
-            return next;
-        }
-
-        @Override
-        public Type getType() {
-            return type;
-        }
-
-        @Override
-        public Flow setNext(Flow next) {
-            this.next = next;
-            return this;
-
-        }
-
-        @Override
-        public Flow setMayBranchTo(Flow mayBranchTo) {
-            this.mayBranchTo = mayBranchTo;
-            return this;
-
-        }
-
-        @Override
-        public Flow setType(Type type) {
-            this.type = type;
-            return this;
-
-        }
-
-        @Override
-        public List<String> getErrors() {
-            return errors;
-        }
-
-        public Flow addError(String message) {
-            this.errors = errors.append(message);
-            return this;
-        }
-    }
-
-    class ForwardDeclaredFlow implements Flow {
+    /**
+     * A placeholder for when we don't know exactly where something is
+     * going to flow yet, but we need a pointer to it anyway.
+     * <p>
+     * (Terrible use of OOP here to avoid ugly code elsewhere)
+     */
+    static class ForwardDeclaredFlow extends Flow {
         private Flow indirection;
+
+        public ForwardDeclaredFlow() {
+            super(null, Type.STEP, null);
+        }
 
         @Override
         public Node getNode() {
