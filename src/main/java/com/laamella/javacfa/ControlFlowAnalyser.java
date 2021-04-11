@@ -91,6 +91,8 @@ public class ControlFlowAnalyser {
                     .foldLeft(next, (nextFlow, currentStmt) -> analyse(currentStmt, back, continueLabels, nextFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType));
         } else if (node instanceof SwitchStmt) {
             return analyseSwitchStmt((SwitchStmt) node, back, continueLabels, next, breakTo, breakLabels, returnFlow, catchClausesByCatchType);
+        } else if (node instanceof EmptyStmt) {
+            return next;
         } else if (node instanceof ContinueStmt) {
             return ((ContinueStmt) node).getLabel()
                     .map(SimpleName::asString)

@@ -1,16 +1,10 @@
-void abc(int b) {
-    int a = 10;
-    while (a > 0) {
-        a--;
-        b++;
-    }
+{
+    while (true)
+        ;
     return b;
 }
 /* expected:
 1    START  -> 2
-2    STEP   -> 3
-3    CHOICE -> 7 or 4 (cond: 3:12)
-7    RETURN -> end
-4    STEP   -> 5
-5    STEP   -> 3
+2    CHOICE -> 4 or 2 (cond: 2:12)
+4    RETURN -> end
 */
