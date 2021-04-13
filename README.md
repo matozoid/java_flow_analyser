@@ -1,11 +1,10 @@
 # Control Flow Analyser with JavaParser
 Builds control flow graphs from source code parsed with JavaParser.
 
-Right now it is an unfinished experiment, 
-not all Java constructs are handled, including common ones.
+A few things are missing, see the issue list.
 
 You can look at the source code to see a way of implementing an algorithm like this,
-or help me fix issues.
+or help me complete it.
 
 # Data Flow Analyser with JavaParser
 

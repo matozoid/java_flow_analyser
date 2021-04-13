@@ -185,14 +185,21 @@ public class ControlFlowAnalyser {
         Flow finallyFlowForBreakTo = tryStmt.getFinallyBlock()
                 .map(fb -> analyse(fb, back, continueLabels, breakTo, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
                 .orElse(next);
-        // TODO redirect labeled breaks through the finally block
-        // TODO redirect labeled continues through the finally block
+        Flow finallyFlowForReturn = tryStmt.getFinallyBlock()
+                .map(fb -> analyse(fb, back, continueLabels, returnFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                .orElse(next);
+        Map<String, Flow> finallyFlowForContinueLabels = continueLabels.map((label, labeledContinueFlow) -> Tuple.of(label,
+                tryStmt.getFinallyBlock().map(fb -> analyse(fb, back, continueLabels, labeledContinueFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                        .orElse(labeledContinueFlow)));
+        Map<String, Flow> finallyFlowForBreakLabels = breakLabels.map((label, labeledBreakFlow) -> Tuple.of(label,
+                tryStmt.getFinallyBlock().map(fb -> analyse(fb, back, continueLabels, labeledBreakFlow, breakTo, breakLabels, returnFlow, catchClausesByCatchType))
+                        .orElse(labeledBreakFlow)));
         List<Tuple2<Type, Flow>> newCatchClausesByCatchType = tryStmt.getCatchClauses().stream()
                 .map(cc -> Tuple.of(cc.getParameter().getType(),
-                        analyse(cc.getBody(), back, continueLabels, finallyFlowForContinue, finallyFlowForBreakTo, breakLabels, returnFlow, catchClausesByCatchType)))
+                        analyse(cc.getBody(), back, finallyFlowForContinueLabels, finallyFlowForContinue, finallyFlowForBreakTo, finallyFlowForBreakLabels, finallyFlowForReturn, catchClausesByCatchType)))
                 .collect(List.collector())
                 .appendAll(catchClausesByCatchType);
-        return analyse(tryStmt.getTryBlock(), finallyFlowForContinue, continueLabels, finallyFlow, finallyFlowForBreakTo, breakLabels, returnFlow, newCatchClausesByCatchType);
+        return analyse(tryStmt.getTryBlock(), finallyFlowForContinue, finallyFlowForContinueLabels, finallyFlow, finallyFlowForBreakTo, finallyFlowForBreakLabels, finallyFlowForReturn, newCatchClausesByCatchType);
     }
 
     private Flow analyseSwitchStmt(SwitchStmt switchStmt, Flow back, Map<String, Flow> continueLabels, Flow next, Map<String, Flow> breakLabels, Flow returnFlow, List<Tuple2<Type, Flow>> catchClausesByCatchType) {
