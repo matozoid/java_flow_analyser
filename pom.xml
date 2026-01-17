@@ -11,17 +11,18 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
+        <javaparser.version>3.28.0</javaparser.version>
     </properties>
     <dependencies>
         <dependency>
             <groupId>com.github.javaparser</groupId>
             <artifactId>javaparser-core</artifactId>
-            <version>3.27.1</version>
+            <version>${javaparser.version}</version>
         </dependency>
         <dependency>
             <groupId>com.github.javaparser</groupId>
             <artifactId>javaparser-symbol-solver-core</artifactId>
-            <version>3.27.1</version>
+            <version>${javaparser.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
