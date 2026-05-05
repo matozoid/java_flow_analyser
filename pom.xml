@@ -11,7 +11,7 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <javaparser.version>3.28.0</javaparser.version>
+        <javaparser.version>3.28.1</javaparser.version>
     </properties>
     <dependencies>
         <dependency>
