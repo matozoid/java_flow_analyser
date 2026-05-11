@@ -33,8 +33,8 @@
         </dependency>
         <dependency>
             <groupId>com.laamella</groupId>
-            <artifactId>snippets-test-junit5</artifactId>
-            <version>0.1</version>
+            <artifactId>snippets-test-junit5-core</artifactId>
+            <version>1.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>

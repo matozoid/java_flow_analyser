@@ -8,9 +8,9 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
-import com.laamella.snippets_test_junit5.BasePath;
-import com.laamella.snippets_test_junit5.SnippetFileFormat;
-import com.laamella.snippets_test_junit5.SnippetTestFactory;
+import com.laamella.snippets_test_junit5.core.BasePath;
+import com.laamella.snippets_test_junit5.core.SnippetFileFormat;
+import com.laamella.snippets_test_junit5.core.SnippetTestFactory;
 import io.vavr.control.Option;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -21,19 +21,19 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static com.laamella.snippets_test_junit5.TestCaseFilenameFilter.allFiles;
+import static com.laamella.snippets_test_junit5.core.TestCase.simpleTestCase;
+import static com.laamella.snippets_test_junit5.core.TestCaseFilenameFilter.allFiles;
 
 class ControlFlowAnalyserTest {
     private final BasePath basePath = BasePath.fromMavenModuleRoot(ControlFlowAnalyserTest.class).inSrcTestResources();
 
     @TestFactory
     Stream<DynamicTest> singleResult() throws IOException {
-        return new SnippetTestFactory<>(
-                new SnippetFileFormat("/*", "*/\n", "\n/* expected:\n", "\n---\n", "*/"),
+        return new SnippetTestFactory(
+                new SnippetFileFormat("/*", "*/\n", "", "\n/* expected:\n", "\n---\n", "*/"),
                 basePath.inSubDirectory("single_result"),
                 allFiles(),
-                this::parse,
-                (testCaseText, testCase) -> dumpDebugFlow(testCase)
+                simpleTestCase(tc -> dumpDebugFlow(parse(tc)))
         ).stream();
     }
 
@@ -42,12 +42,11 @@ class ControlFlowAnalyserTest {
         JavaParser jp = new JavaParser(
                 new ParserConfiguration()
                         .setSymbolResolver(new JavaSymbolSolver(new CombinedTypeSolver(new ReflectionTypeSolver()))));
-        return new SnippetTestFactory<>(
-                new SnippetFileFormat("/*", "*/\n", "\n/* expected:\n", "\n---\n", "*/"),
+        return new SnippetTestFactory(
+                new SnippetFileFormat("/*", "*/\n", "", "\n/* expected:\n", "\n---\n", "*/"),
                 basePath.inSubDirectory("compilation_unit"),
                 allFiles(),
-                jp::parse,
-                (testCaseText, testCase) -> dumpMultipleDebugFlow(testCase)
+                simpleTestCase(tc -> dumpMultipleDebugFlow(jp.parse(tc)))
         ).stream();
     }
 
